@@ -1,0 +1,13 @@
+# this provisioner just loads any exported dashboard json files 
+# that are also found in the /etc/grafana/provisioning/dashboards directory
+apiVersion: 1
+
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 15
+    options:
+      path: /etc/grafana/provisioning/dashboards

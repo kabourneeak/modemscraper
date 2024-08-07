@@ -1,0 +1,2 @@
+# environment files which may contain sensitive info
+*.env
