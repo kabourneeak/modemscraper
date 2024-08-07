@@ -1,24 +1,29 @@
-# TC 4400 Signal Stats
+# Modem Signal Level Scraper
 
 ## Introduction
 
-This project reads the signal levels from a TC 4400 modem
+This project reads the signal levels from a Technicolor TC4400 modem
 and scrapes the metrics into Prometheus for display in Grafana,
 in order to help identify intermittent connectivity issues.
 
-For example, here is an issue occassionally hitting Channel 5:
+Everything you need to collect and visualize the data is provided "out of the box"
+via Docker Compose.
+
+For example, here is the dashboard revealing an issue occassionally hitting Channel 5:
 
 ![Partial bonding event](./docs/partial-bonding.png)
 
 ## Prerequisites
 
 - A Docker Compose runtime, such as [Rancher Desktop](https://rancherdesktop.io/)
-- A [Technicolour TC4400 Cable Modem](https://www.canadacomputers.com/product_info.php?cPath=27_1059&item_id=231043&language=en)
+- A [Technicolor TC4400 Cable Modem](https://www.canadacomputers.com/product_info.php?cPath=27_1059&item_id=231043&language=en)
 
 ## Getting Started
 
 If you have a passing familiarity with running Docker Compose or containers in general,
 then you should be able to have this project up and running in just a few moments.
+
+All example commands are run from the root of the repository.
 
 ### Get your modem's credentials
 
@@ -32,7 +37,10 @@ These links may help:
 - [Reddit discussion for TekSavvy](https://old.reddit.com/r/teksavvy/comments/j283mt/cant_access_tc4400_admin_page/)
 
 Verify that you can log into the Modem's Administrative Web UI with your browser.
-If you are unable,
+
+The default address for the Modem's Web UI is [http://192.168.100.1](http://192.168.100.1).
+
+If you are unable to login,
 then it is unlikely that this tool will be any more successful.
 
 ### Clone this repository
@@ -40,10 +48,16 @@ then it is unlikely that this tool will be any more successful.
 You need to run the project locally,
 so clone this repository anywhere you like on your computer.
 
+```sh
+$ git clone https://github.com/kabourneeak/modemscraper.git
+```
+
 ### Configure modem password
 
 You will need to configure the tool with the modem password you found above.
-You can create a `scraper.env` file with the following command:
+You must create a `scraper.env` file next to the `compose.yaml`
+with the correct environment variable and value,
+which you can do with the following command:
 
 ```sh
 $ cat << EOF > scraper.env
@@ -53,8 +67,7 @@ EOF
 
 ### Start for the first time
 
-From the root of this repository,
-use these commands to build the project,
+Use these commands to build the project,
 startup the services,
 and start scraping data.
 
@@ -77,16 +90,14 @@ $ docker compose up -d
 
 Once running, use these links to see what the project is up to.
 
-- [Grafana](http://localhost:3000)
-  - The dashboards where you can see the scraped data.
-  - [Connection Status Dashboard](http://localhost:3000/d/edttjjhaqguf4b/connection-status?orgId=1)
-    - This is almost certainly the main thing you want to look at.
+- [Connection Status Dashboard in Grafana](http://localhost:3000/d/edttjjhaqguf4b/connection-status?orgId=1)
+  - This is almost certainly the main thing you want to look at.
+- [Your TC4400 modem](http://192.168.100.1)
+  - The default address for the modem's in-built Web UI.
 - [Prometheus](http://localhost:9090)
   - The underlying database for the scraped data.
-- [Scraper](http://localhost:8080)
+- [Scraper](http://localhost:8080/metrics)
   - The scraping tool itself.
-- [Your TC 4400 modem](http://192.168.100.1)
-  - The default address for the modem's in-built Web UI.
 
 ### Stop
 
@@ -97,8 +108,8 @@ docker compose stop
 ```
 
 New data will not be scraped,
-and you will not be able to access the database,
-however, previously scraped data will remain.
+and you will not be able to access the dashboards,
+however, previously scraped data will remain stored until you restart it.
 
 ### Restart
 
@@ -144,17 +155,7 @@ Other tools to help:
 
 ## Dev notes
 
-To export the datasource configured in Grafana, use
-
-```sh
-curl -u "admin:admin" http://localhost:3000/api/datasources
-```
-
-Representing state metrics
-
-- https://stackoverflow.com/questions/78016975/how-to-get-the-label-of-boolean-metrics-from-promql-to-grafana-vizualization
-
-To set up user secrets
+To set up User Secrets
 
 ```sh
 $ dotnet user-secrets -p src/scraper set "Modem:TC4400:Password" "the-password"
