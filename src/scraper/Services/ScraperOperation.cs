@@ -13,6 +13,10 @@ internal class ScraperOperation
     private readonly Tc4400Client client;
     private readonly ILogger<ScraperOperation> logger;
 
+    private readonly HashSet<int> lifetimeSeenUpstreamChannelIds = new();
+
+    private readonly HashSet<int> lifetimeSeenDownstreamChannelIds = new();
+
     public ScraperOperation(
         Tc4400Client client,
         ILogger<ScraperOperation> logger)
@@ -118,35 +122,54 @@ internal class ScraperOperation
         // select all rows except the title and the column names
         var rows = upstreamTable.QuerySelectorAll("tr").Skip(2);
 
+        var seenIds = new HashSet<int>();
+
         foreach (var row in rows)
         {
             var cells = row.QuerySelectorAll("td");
 
-            var channelIndex = int.Parse(cells[0].TextContent);
+            var channelId = int.Parse(cells[1].TextContent);
+            var channelLabel = $"{channelId:D2}"; // pad with 0
             var bondingState = ParseBondingState(cells[4].TextContent);
             var txLevel = ParseDbmvLevelOrDefault(cells[7].TextContent) ?? 0.0;
 
             logger.LogInformation(
-                "Upstream Channel {ChannelIndex}: {BondingState}, Tx Level: {TxLevel:F1} dBmV",
-                channelIndex,
+                "Upstream Channel {ChannelId}: {BondingState}, Tx Level: {TxLevel:F1} dBmV",
+                channelId,
                 bondingState,
                 txLevel);
 
+            seenIds.Add(channelId);
+            lifetimeSeenUpstreamChannelIds.Add(channelId);
+
             Metrics.UpstreamChannelTxLevel
-                .WithLabels(channelIndex.ToString())
+                .WithLabels(channelLabel)
                 .Set(txLevel);
 
             Metrics.UpstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.Bonded.ToString())
+                .WithLabels(channelLabel, BondingState.Bonded.ToString())
                 .Set(bondingState == BondingState.Bonded ? 1 : 0);
 
             Metrics.UpstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.Partial.ToString())
+                .WithLabels(channelLabel, BondingState.Partial.ToString())
                 .Set(bondingState == BondingState.Partial ? 1 : 0);
 
             Metrics.UpstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.NotBonded.ToString())
+                .WithLabels(channelLabel, BondingState.NotBonded.ToString())
                 .Set(bondingState == BondingState.NotBonded ? 1 : 0);
+        }
+
+        // remove metrics for channels that are no longer seen
+        foreach (var id in lifetimeSeenUpstreamChannelIds.Except(seenIds))
+        {
+            logger.LogInformation("No longer seeing Upstream Channel {ChannelId}", id);
+
+            var channelLabel = $"{id:D2}";
+
+            Metrics.UpstreamChannelTxLevel.RemoveLabelled(channelLabel);
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
         }
     }
 
@@ -159,41 +182,61 @@ internal class ScraperOperation
         // select all rows except the title and the column names
         var rows = downstreamTable.QuerySelectorAll("tr").Skip(2);
 
+        var seenIds = new HashSet<int>();
+
         foreach (var row in rows)
         {
             var cells = row.QuerySelectorAll("td");
 
-            var channelIndex = int.Parse(cells[0].TextContent);
+            var channelId = int.Parse(cells[1].TextContent);
+            var channelLabel = $"{channelId:D2}"; // pad with 0
             var bondingState = ParseBondingState(cells[4].TextContent);
             var snrLevel = ParseDbLevelOrDefault(cells[7].TextContent) ?? 0.0;
             var rxLevel = ParseDbmvLevelOrDefault(cells[8].TextContent) ?? 0.0;
 
             logger.LogInformation(
-                "Downstream Channel {ChannelIndex}: {BondingState}, Snr Level: {SnrLevel:F1} dB, Rx Level: {RxLevel:F1} dBmV",
-                channelIndex,
+                "Downstream Channel {ChannelId}: {BondingState}, Snr Level: {SnrLevel:F1} dB, Rx Level: {RxLevel:F1} dBmV",
+                channelId,
                 bondingState,
                 snrLevel,
                 rxLevel);
 
+            seenIds.Add(channelId);
+            lifetimeSeenDownstreamChannelIds.Add(channelId);
+
             Metrics.DownstreamChannelRxLevel
-                .WithLabels(channelIndex.ToString())
+                .WithLabels(channelLabel)
                 .Set(rxLevel);
 
             Metrics.DownstreamChannelSnrLevel
-                .WithLabels(channelIndex.ToString())
+                .WithLabels(channelLabel)
                 .Set(snrLevel);
 
             Metrics.DownstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.Bonded.ToString())
+                .WithLabels(channelLabel, BondingState.Bonded.ToString())
                 .Set(bondingState == BondingState.Bonded ? 1 : 0);
 
             Metrics.DownstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.Partial.ToString())
+                .WithLabels(channelLabel, BondingState.Partial.ToString())
                 .Set(bondingState == BondingState.Partial ? 1 : 0);
 
             Metrics.DownstreamChannelBondingState
-                .WithLabels(channelIndex.ToString(), BondingState.NotBonded.ToString())
+                .WithLabels(channelLabel, BondingState.NotBonded.ToString())
                 .Set(bondingState == BondingState.NotBonded ? 1 : 0);
+        }
+
+        // remove metrics for channels that are no longer seen
+        foreach (var id in lifetimeSeenDownstreamChannelIds.Except(seenIds))
+        {
+            logger.LogInformation("No longer seeing Downstream Channel {ChannelId}", id);
+
+            var channelLabel = $"{id:D2}";
+
+            Metrics.DownstreamChannelRxLevel.RemoveLabelled(channelLabel);
+            Metrics.DownstreamChannelSnrLevel.RemoveLabelled(channelLabel);
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
         }
     }
 

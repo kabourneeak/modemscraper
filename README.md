@@ -92,6 +92,8 @@ Once running, use these links to see what the project is up to.
 
 - [Connection Status Dashboard in Grafana](http://localhost:3000/d/edttjjhaqguf4b/connection-status?orgId=1)
   - This is almost certainly the main thing you want to look at.
+  - Note that it can take about a minute for data to start appearing here.
+    If all the dashboard panels say "No Data" just wait a bit longer.
 - [Your TC4400 modem](http://192.168.100.1)
   - The default address for the modem's in-built Web UI.
 - [Prometheus](http://localhost:9090)
