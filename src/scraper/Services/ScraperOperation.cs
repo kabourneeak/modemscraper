@@ -37,6 +37,36 @@ internal class ScraperOperation
         SetOperationState(HtmlParsableOp, scrapeOperationState.HtmlParsable);
         SetOperationState(UpstreamParseableOp, scrapeOperationState.UpstreamParseable);
         SetOperationState(DownstreamParseableOp, scrapeOperationState.DownstreamParseable);
+
+        // remove metrics for channels that are no longer seen
+        lifetimeSeenUpstreamChannelIds.UnionWith(scrapeOperationState.SeenUpstreamChannelIds);
+
+        foreach (var id in lifetimeSeenUpstreamChannelIds.Except(scrapeOperationState.SeenUpstreamChannelIds))
+        {
+            logger.LogInformation("No longer seeing Upstream Channel {ChannelId}", id);
+
+            var channelLabel = $"{id:D2}";
+
+            Metrics.UpstreamChannelTxLevel.RemoveLabelled(channelLabel);
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
+            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
+        }
+
+        lifetimeSeenDownstreamChannelIds.UnionWith(scrapeOperationState.SeenDownstreamChannelIds);
+
+        foreach (var id in lifetimeSeenDownstreamChannelIds.Except(scrapeOperationState.SeenDownstreamChannelIds))
+        {
+            logger.LogInformation("No longer seeing Downstream Channel {ChannelId}", id);
+
+            var channelLabel = $"{id:D2}";
+
+            Metrics.DownstreamChannelRxLevel.RemoveLabelled(channelLabel);
+            Metrics.DownstreamChannelSnrLevel.RemoveLabelled(channelLabel);
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
+            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
+        }
     }
 
     private async Task<ScrapeOperationState> ScrapeAsync(CancellationToken cancellationToken)
@@ -86,8 +116,12 @@ internal class ScraperOperation
         {
             try
             {
-                ParseUpstreamChannels(htmlDoc);
-                scrapeOperationState = scrapeOperationState with { UpstreamParseable = OperationState.Healthy };
+                var seenUpstreamChannelIds = ParseUpstreamChannels(htmlDoc);
+                scrapeOperationState = scrapeOperationState with
+                {
+                    UpstreamParseable = OperationState.Healthy,
+                    SeenUpstreamChannelIds = seenUpstreamChannelIds
+                };
             }
             catch (Exception ex)
             {
@@ -98,8 +132,12 @@ internal class ScraperOperation
 
             try
             {
-                ParseDownstreamChannels(htmlDoc);
-                scrapeOperationState = scrapeOperationState with { DownstreamParseable = OperationState.Healthy };
+                var seenDownstreamChannelIds = ParseDownstreamChannels(htmlDoc);
+                scrapeOperationState = scrapeOperationState with
+                {
+                    DownstreamParseable = OperationState.Healthy,
+                    SeenDownstreamChannelIds = seenDownstreamChannelIds
+                };
             }
             catch (Exception ex)
             {
@@ -113,7 +151,7 @@ internal class ScraperOperation
         return scrapeOperationState;
     }
 
-    private void ParseUpstreamChannels(IHtmlDocument htmlDoc)
+    private HashSet<int> ParseUpstreamChannels(IHtmlDocument htmlDoc)
     {
         // select Upstream Channel Status table
         // which is the 3rd table
@@ -129,6 +167,14 @@ internal class ScraperOperation
             var cells = row.QuerySelectorAll("td");
 
             var channelId = int.Parse(cells[1].TextContent);
+
+            if (channelId == 0)
+            {
+                // not a real channel, but sometimes presented when disconnected
+                // e.g., the US light is off or flashing
+                continue;
+            }
+
             var channelLabel = $"{channelId:D2}"; // pad with 0
             var bondingState = ParseBondingState(cells[4].TextContent);
             var txLevel = ParseDbmvLevelOrDefault(cells[7].TextContent) ?? 0.0;
@@ -140,7 +186,6 @@ internal class ScraperOperation
                 txLevel);
 
             seenIds.Add(channelId);
-            lifetimeSeenUpstreamChannelIds.Add(channelId);
 
             Metrics.UpstreamChannelTxLevel
                 .WithLabels(channelLabel)
@@ -159,21 +204,10 @@ internal class ScraperOperation
                 .Set(bondingState == BondingState.NotBonded ? 1 : 0);
         }
 
-        // remove metrics for channels that are no longer seen
-        foreach (var id in lifetimeSeenUpstreamChannelIds.Except(seenIds))
-        {
-            logger.LogInformation("No longer seeing Upstream Channel {ChannelId}", id);
-
-            var channelLabel = $"{id:D2}";
-
-            Metrics.UpstreamChannelTxLevel.RemoveLabelled(channelLabel);
-            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
-            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
-            Metrics.UpstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
-        }
+        return seenIds;
     }
 
-    private void ParseDownstreamChannels(IHtmlDocument htmlDoc)
+    private HashSet<int> ParseDownstreamChannels(IHtmlDocument htmlDoc)
     {
         // select Downstream Channel Status table
         // which is the 2nd table
@@ -189,6 +223,14 @@ internal class ScraperOperation
             var cells = row.QuerySelectorAll("td");
 
             var channelId = int.Parse(cells[1].TextContent);
+
+            if (channelId == 0)
+            {
+                // not a real channel, but sometimes presented when disconnected
+                // e.g., the DS light is off or flashing
+                continue;
+            }
+
             var channelLabel = $"{channelId:D2}"; // pad with 0
             var bondingState = ParseBondingState(cells[4].TextContent);
             var snrLevel = ParseDbLevelOrDefault(cells[7].TextContent) ?? 0.0;
@@ -202,7 +244,6 @@ internal class ScraperOperation
                 rxLevel);
 
             seenIds.Add(channelId);
-            lifetimeSeenDownstreamChannelIds.Add(channelId);
 
             Metrics.DownstreamChannelRxLevel
                 .WithLabels(channelLabel)
@@ -225,19 +266,7 @@ internal class ScraperOperation
                 .Set(bondingState == BondingState.NotBonded ? 1 : 0);
         }
 
-        // remove metrics for channels that are no longer seen
-        foreach (var id in lifetimeSeenDownstreamChannelIds.Except(seenIds))
-        {
-            logger.LogInformation("No longer seeing Downstream Channel {ChannelId}", id);
-
-            var channelLabel = $"{id:D2}";
-
-            Metrics.DownstreamChannelRxLevel.RemoveLabelled(channelLabel);
-            Metrics.DownstreamChannelSnrLevel.RemoveLabelled(channelLabel);
-            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Bonded.ToString());
-            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.Partial.ToString());
-            Metrics.DownstreamChannelBondingState.RemoveLabelled(channelLabel, BondingState.NotBonded.ToString());
-        }
+        return seenIds;
     }
 
     private static BondingState ParseBondingState(string bondingState)
@@ -292,5 +321,9 @@ internal class ScraperOperation
         public OperationState UpstreamParseable { get; init; }
 
         public OperationState DownstreamParseable { get; init; }
+
+        public HashSet<int> SeenUpstreamChannelIds { get; init; } = new();
+
+        public HashSet<int> SeenDownstreamChannelIds { get; init; } = new();
     }
 }

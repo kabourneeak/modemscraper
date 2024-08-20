@@ -96,6 +96,7 @@ Once running, use these links to see what the project is up to.
     If all the dashboard panels say "No Data" just wait a bit longer.
 - [Your TC4400 modem](http://192.168.100.1)
   - The default address for the modem's in-built Web UI.
+  - The [Connection Status](http://192.168.100.1/cmconnectionstatus.html) page that the scraper is scraping.
 - [Prometheus](http://localhost:9090)
   - The underlying database for the scraped data.
 - [Scraper](http://localhost:8080/metrics)
