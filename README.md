@@ -9,7 +9,7 @@ in order to help identify intermittent connectivity issues.
 Everything you need to collect and visualize the data is provided "out of the box"
 via Docker Compose.
 
-For example, here is the dashboard revealing an issue occassionally hitting Channel 5:
+For example, here is the dashboard revealing an issue occassionally hitting Channel 10:
 
 ![Partial bonding event](./docs/partial-bonding.png)
 
