@@ -173,7 +173,7 @@
               }
             ]
           },
-          "unit": "dBmV"
+          "unit": "dB"
         },
         "overrides": []
       },
@@ -183,7 +183,7 @@
         "x": 12,
         "y": 0
       },
-      "id": 5,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [],
@@ -203,7 +203,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "scraper_downstream_channel_snr_level",
+          "expr": "scraper_downstream_channel_rx_level",
           "hide": true,
           "instant": false,
           "legendFormat": "__auto",
@@ -216,7 +216,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "max(scraper_downstream_channel_snr_level)",
+          "expr": "max(scraper_downstream_channel_rx_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Max",
@@ -229,7 +229,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "avg(scraper_downstream_channel_snr_level)",
+          "expr": "avg(scraper_downstream_channel_rx_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Average",
@@ -242,7 +242,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "min(scraper_downstream_channel_snr_level)",
+          "expr": "min(scraper_downstream_channel_rx_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Min",
@@ -250,7 +250,7 @@
           "refId": "C"
         }
       ],
-      "title": "Downstream Channel Snr Level",
+      "title": "Downstream Channel Signal Rx Level",
       "type": "timeseries"
     },
     {
@@ -450,7 +450,7 @@
               }
             ]
           },
-          "unit": "dB"
+          "unit": "dBmV"
         },
         "overrides": []
       },
@@ -460,7 +460,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 4,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [],
@@ -480,7 +480,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "scraper_downstream_channel_rx_level",
+          "expr": "scraper_downstream_channel_snr_level",
           "hide": true,
           "instant": false,
           "legendFormat": "__auto",
@@ -493,7 +493,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "max(scraper_downstream_channel_rx_level)",
+          "expr": "max(scraper_downstream_channel_snr_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Max",
@@ -506,7 +506,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "avg(scraper_downstream_channel_rx_level)",
+          "expr": "avg(scraper_downstream_channel_snr_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Average",
@@ -519,7 +519,7 @@
             "uid": "adtq9i0gsr5dsb"
           },
           "editorMode": "code",
-          "expr": "min(scraper_downstream_channel_rx_level)",
+          "expr": "min(scraper_downstream_channel_snr_level)",
           "hide": false,
           "instant": false,
           "legendFormat": "Min",
@@ -527,7 +527,7 @@
           "refId": "C"
         }
       ],
-      "title": "Downstream Channel Signal Rx Level",
+      "title": "Downstream Channel Snr Level",
       "type": "timeseries"
     },
     {
@@ -857,6 +857,7 @@
             }
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
